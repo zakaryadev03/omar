@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini To‑Do + Notes (HTML/CSS only)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f172a;          /* slate-900 */
+      --panel: #111827;       /* gray-900 */
+      --panel-2: #0b1220;     /* slightly darker */
+      --card: #111827;        /* card bg */
+      --muted: #94a3b8;       /* slate-400 */
+      --text: #e5e7eb;        /* gray-200 */
+      --accent: #22d3ee;      /* cyan-400 */
+      --accent-2: #38bdf8;    /* sky-400 */
+      --ring: rgba(34, 211, 238, .35);
+      --ok: #22c55e;          /* green-500 */
+      --warn: #f59e0b;        /* amber-500 */
+      --danger: #ef4444;      /* red-500 */
+      --radius: 18px;
+      --shadow: 0 10px 30px rgba(2,8,23,.35);
+    }
+
+    /* Light mode (toggle below) */
+    #theme:checked ~ .app {
+      --bg: #f8fafc;          /* slate-50 */
+      --panel: #ffffff;       /* white */
+      --panel-2: #f1f5f9;     /* slate-100 */
+      --card: #ffffff;        /* white */
+      --muted: #475569;       /* slate-600 */
+      --text: #0f172a;        /* slate-900 */
+      --accent: #0891b2;      /* cyan-700 */
+      --accent-2: #0284c7;    /* sky-700 */
+      --ring: rgba(2, 132, 199, .25);
+      --shadow: 0 10px 30px rgba(2,8,23,.08);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 800px at 80% -10%, rgba(34,211,238,.25), transparent 60%),
+                  radial-gradient(1000px 700px at -10% 110%, rgba(56,189,248,.18), transparent 60%),
+                  var(--bg);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 32px;
+    }
+
+    /* Hidden controls */
+    #theme, #add, #tab-all, #tab-active, #tab-done { position: absolute; left: -9999px; }
+
+    .app {
+      width: min(1100px, 95vw);
+      display: grid;
+      gap: 20px;
+      grid-template-columns: 280px 1fr;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+    }
+
+    /* Panels */
+    .panel {
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border: 1px solid rgba(148,163,184,.12);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .toolbar {
+      display: flex; gap: 12px; align-items: center; justify-content: space-between;
+      padding: 8px 12px; border-radius: calc(var(--radius) - 6px);
+      background: rgba(148,163,184,.08);
+      border: 1px solid rgba(148,163,184,.12);
+    }
+
+    .brand { display: flex; gap: 10px; align-items: center; font-weight: 700; letter-spacing: .3px; }
+    .logo { width: 32px; height: 32px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: 0 6px 20px var(--ring); }
+
+    .switch {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-size: 14px; color: var(--muted);
+    }
+    .toggle {
+      --w: 50px; --h: 28px; --p: 3px;
+      width: var(--w); height: var(--h); border-radius: 100px; position: relative;
+      background: rgba(148,163,184,.25);
+      border: 1px solid rgba(148,163,184,.25);
+      cursor: pointer; display: inline-block;
+    }
+    .toggle::after {
+      content: ""; position: absolute; top: var(--p); left: var(--p);
+      width: calc(var(--h) - var(--p)*2); height: calc(var(--h) - var(--p)*2);
+      background: white; border-radius: 999px; box-shadow: 0 2px 10px rgba(0,0,0,.2);
+      transition: transform .25s ease;
+    }
+    /* Move knob when light mode */
+    #theme:checked ~ .app .toggle::after { transform: translateX(calc(var(--w) - var(--h))); }
+
+    /* Sidebar */
+    .sidebar h3 { margin: 8px 0 12px; font-size: 14px; color: var(--muted); font-weight: 600; }
+    .quick-add { display: grid; gap: 10px; }
+    .input {
+      background: var(--card); border: 1px solid rgba(148,163,184,.18);
+      border-radius: 12px; padding: 12px 14px; color: var(--text);
+    }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 10px 14px; border-radius: 12px; font-weight: 600; border: 1px solid transparent;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: white; text-decoration: none; cursor: pointer;
+      box-shadow: 0 8px 24px var(--ring);
+    }
+    .btn.secondary { background: transparent; color: var(--text); border-color: rgba(148,163,184,.25); box-shadow: none; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 8px; background: rgba(148,163,184,.08); padding: 6px; border-radius: 12px; border: 1px solid rgba(148,163,184,.12); }
+    .tab { flex: 1; text-align: center; padding: 10px 12px; border-radius: 10px; cursor: pointer; color: var(--muted); font-weight: 600; }
+    #tab-all:checked ~ .app .tab[for="tab-all"],
+    #tab-active:checked ~ .app .tab[for="tab-active"],
+    #tab-done:checked ~ .app .tab[for="tab-done"] { background: var(--card); color: var(--text); border: 1px solid rgba(148,163,184,.18); box-shadow: var(--shadow); }
+
+    /* To‑do list */
+    .list { display: grid; gap: 10px; margin-top: 12px; }
+    .todo { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 12px; border: 1px solid rgba(148,163,184,.18); background: var(--card); border-radius: 14px; }
+    .todo input[type="checkbox"] { appearance: none; width: 20px; height: 20px; border: 2px solid var(--muted); border-radius: 6px; display: grid; place-items: center; cursor: pointer; }
+    .todo input[type="checkbox"]:checked { border-color: var(--ok); background: linear-gradient(135deg, var(--ok), #10b981); }
+    .todo input[type="checkbox"]:checked::after { content: "✓"; color: white; font-weight: 800; font-size: 14px; }
+    .todo .title { font-weight: 600; }
+    .todo .tag { font-size: 12px; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(148,163,184,.25); color: var(--muted); }
+    .todo.done .title { text-decoration: line-through; opacity: .65; }
+
+    /* Filtering without JS using :has() (supported in modern browsers) */
+    /* Show all by default */
+    .list .todo { display: grid; }
+    /* Active filter */
+    #tab-active:checked ~ .app .list .todo.done { display: none; }
+    /* Done filter */
+    #tab-done:checked ~ .app .list .todo:not(.done) { display: none; }
+
+    /* Notes */
+    .notes { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; margin-top: 12px; }
+    .note { grid-column: span 4; background: var(--card); border: 1px solid rgba(148,163,184,.18); border-radius: 14px; padding: 14px; min-height: 110px; display: grid; align-content: start; gap: 10px; }
+    .note h4 { margin: 0; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .note p { margin: 0; line-height: 1.5; }
+    @media (max-width: 1000px) { .note { grid-column: span 6; } }
+    @media (max-width: 600px) { .note { grid-column: span 12; } }
+
+    /* Modal (Add Task) using checkbox hack */
+    #add:checked ~ .app .modal { opacity: 1; pointer-events: auto; }
+    .modal { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(2,6,23,.55); backdrop-filter: blur(6px); opacity: 0; pointer-events: none; transition: opacity .2s ease; }
+    .sheet { width: min(560px, 92vw); background: var(--panel); border: 1px solid rgba(148,163,184,.18); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); }
+    .sheet h3 { margin: 0 0 12px; }
+
+    .row { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+    .row .input, textarea.input { width: 100%; }
+    textarea.input { min-height: 120px; resize: vertical; }
+
+    .pill { display: inline-flex; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(148,163,184,.22); color: var(--muted); }
+
+    .footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+
+    /* Tiny helper badges */
+    .badge { font-size: 11px; padding: 4px 8px; border-radius: 999px; border: 1px dashed rgba(148,163,184,.35); color: var(--muted); }
+  </style>
+</head>
+<body>
+  <!-- Light mode toggle -->
+  <input type="checkbox" id="theme" />
+  <!-- Modal toggle -->
+  <input type="checkbox" id="add" />
+  <!-- Tabs toggles -->
+  <input type="radio" name="tabs" id="tab-all" checked />
+  <input type="radio" name="tabs" id="tab-active" />
+  <input type="radio" name="tabs" id="tab-done" />
+
+  <main class="app">
+    <section class="panel" style="grid-column: 1 / -1;">
+      <div class="toolbar">
+        <div class="brand">
+          <span class="logo" aria-hidden="true"></span>
+          <span>Mini To‑Do + Notes</span>
+          <span class="badge">HTML/CSS only</span>
+        </div>
+        <div class="switch">
+          <label class="toggle" for="theme" title="Toggle light/dark"></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sidebar: Quick add & tips -->
+    <aside class="panel sidebar">
+      <h3>Quick add</h3>
+      <div class="quick-add">
+        <input class="input" placeholder="Task title (visual only)" />
+        <label for="add" class="btn">+ Add Task</label>
+        <a class="btn secondary" href="#" onclick="return false">Clear completed</a>
+      </div>
+      <h3 style="margin-top: 18px;">Tips</h3>
+      <ul style="margin:0; padding-left: 18px; color: var(--muted); line-height: 1.6;">
+        <li>Use the tabs to filter tasks (CSS only).</li>
+        <li>Toggle the theme switch for light/dark.</li>
+        <li>Click <b>Add Task</b> to see a CSS modal.</li>
+      </ul>
+    </aside>
+
+    <!-- Main content -->
+    <section class="panel">
+      <div style="display:flex; justify-content: space-between; align-items: center; gap: 12px;">
+        <div class="tabs" role="tablist" aria-label="Filter tasks">
+          <label class="tab" for="tab-all" role="tab" aria-controls="list">All</label>
+          <label class="tab" for="tab-active" role="tab" aria-controls="list">Active</label>
+          <label class="tab" for="tab-done" role="tab" aria-controls="list">Done</label>
+        </div>
+        <span class="pill" title="Pure CSS demo">No JavaScript</span>
+      </div>
+
+      <div class="list" id="list">
+        <label class="todo">
+          <input type="checkbox" />
+          <div class="title">Containerize the backend</div>
+          <span class="tag">DevOps</span>
+        </label>
+        <label class="todo">
+          <input type="checkbox" />
+          <div class="title">Create CI pipeline (lint, build, push)</div>
+          <span class="tag">CI/CD</span>
+        </label>
+        <label class="todo done">
+          <input type="checkbox" checked />
+          <div class="title">Set up Nginx reverse proxy</div>
+          <span class="tag">Ops</span>
+        </label>
+        <label class="todo">
+          <input type="checkbox" />
+          <div class="title">Add health checks & metrics</div>
+          <span class="tag">SRE</span>
+        </label>
+        <label class="todo done">
+          <input type="checkbox" checked />
+          <div class="title">Write README & docs</div>
+          <span class="tag">Docs</span>
+        </label>
+      </div>
+
+      <p style="margin:14px 2px 0; color: var(--muted); font-size: 13px;">This is a visual prototype: state is not saved and actions are non‑persistent.</p>
+    </section>
+
+    <!-- Notes panel -->
+    <section class="panel" style="grid-column: 1 / -1;">
+      <div style="display:flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 4px 0 8px;">Notes</h3>
+        <span class="pill">Drag to resize textarea</span>
+      </div>
+      <div class="notes">
+        <article class="note">
+          <h4>Ideas</h4>
+          <p>Split services: auth, patients, appointments. Use message bus later.</p>
+        </article>
+        <article class="note">
+          <h4>Infra</h4>
+          <p>Deploy with Docker Compose → ECS. Add Trivy + Gitleaks in CI.</p>
+        </article>
+        <article class="note">
+          <h4>Bugs</h4>
+          <p>CSS not loading? Check cache or MIME types on Nginx.</p>
+        </article>
+        <article class="note" style="grid-column: span 12;">
+          <h4>Scratch</h4>
+          <textarea class="input" placeholder="Write anything here…"></textarea>
+        </article>
+      </div>
+    </section>
+
+    <!-- Modal content -->
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="sheet">
+        <div style="display:flex; justify-content: space-between; align-items:center; gap: 10px;">
+          <h3>Add a task</h3>
+          <label for="add" class="pill" style="cursor:pointer">Close ✕</label>
+        </div>
+        <div class="row" style="margin-top: 8px;">
+          <input class="input" placeholder="Title" />
+          <input class="input" placeholder="Tag (e.g., CI/CD)" />
+        </div>
+        <textarea class="input" placeholder="Description (optional)" style="margin-top: 10px;"></textarea>
+        <div class="footer">
+          <label class="btn secondary" for="add">Cancel</label>
+          <a class="btn" href="#" onclick="return false">Save (visual)</a>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

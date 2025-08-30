@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: student_notes_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: student_notes_app
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - mysql_data:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: student_notes_admin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: appuser
+      PMA_PASSWORD: apppassword
+    depends_on:
+      - mysql
+
+  backend:
+    build: ./backend
+    container_name: student_notes_backend
+    restart: always
+    environment:
+      DB_HOST: "student_notes_db"
+      DB_USER: "appuser"
+      DB_PASSWORD: "apppassword"
+      DB_NAME: "student_notes_app"
+      JWT_SECRET: "Secret-Omar"
+      ALLOWED_ORIGINS: "http://localhost:5173,http://localhost:3000"
+    ports:
+      - "4000:4000"
+    depends_on:
+      - mysql
+
+volumes:
+  mysql_data:
+
